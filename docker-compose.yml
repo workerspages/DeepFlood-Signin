@@ -3,8 +3,8 @@ services:
     build:
       context: .
       args:
-        HTTP_PROXY: "http://192.168.1.252:7893"
-        HTTPS_PROXY: "http://192.168.1.252:7893"
+        HTTP_PROXY: "http://127.0.0.1:7890"
+        HTTPS_PROXY: "http://127.0.0.1:7890"
     image: deepflood-signin:latest
     container_name: deepflood-signin
     # command 已在 Dockerfile 中定义，此处省略以避免冗余
