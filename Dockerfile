@@ -22,11 +22,9 @@ WORKDIR /app
 
 # 复制依赖文件
 COPY requirements.txt .
-COPY requirements-forum.txt .
 
 # 安装两个文件中的依赖
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r requirements-forum.txt
 
 # 复制整个项目到工作目录
 # 这会包括 forum_reply 目录, config 目录, 和所有 .py 文件
