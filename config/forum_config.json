@@ -1,0 +1,74 @@
+{
+  "api": {
+    "base_url": "https://www.deepflood.com",
+    "session_cookie": "",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "request_timeout": 30,
+    "max_retries": 3,
+    "rate_limit_per_minute": 20,
+    "enable_proxy": false,
+    "proxy_url": ""
+  },
+  "ai": {
+    "provider": "new-api",
+    "model": "",
+    "api_key": "",
+    "base_url": "",
+    "max_tokens": 30,
+    "temperature": 0.8
+  },
+  "reply": {
+    "enabled": true,
+    "reply_probability": 0.8,
+    "min_delay_seconds": 60,
+    "max_delay_seconds": 300,
+    "max_replies_per_hour": 10,
+    "max_replies_per_day": 20,
+    "max_length": 10,
+    "min_length": 1,
+    "enable_emoji": true,
+    "template_fallback": true
+  },
+  "filter": {
+    "min_post_age_minutes": 5,
+    "max_post_age_hours": 24,
+    "excluded_keywords": [
+      "广告",
+      "推广",
+      "加群",
+      "微信"
+    ],
+    "required_keywords": [],
+    "min_content_length": 10,
+    "max_content_length": 5000,
+    "excluded_categories": [
+      "广告",
+      "灌水"
+    ]
+  },
+  "database": {
+    "path": "data/forum_reply.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 24
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "logs/forum_reply.log",
+    "max_file_size": "10MB",
+    "backup_count": 5
+  },
+  "scheduler": {
+    "run_mode": "schedule",
+    "start_time": "09:00",
+    "runs_per_day": 20,
+    "time_between_runs_minutes_min": 30,
+    "time_between_runs_minutes_max": 60,
+    "min_post_interval_seconds": 10,
+    "max_post_interval_seconds": 30
+  },
+  "signin": {
+    "enabled": true,
+    "random_bonus": false,
+    "headless": true
+  }
+}

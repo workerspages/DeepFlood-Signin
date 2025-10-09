@@ -1,0 +1,20 @@
+services:
+  deepflood-signin:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: "http://192.168.1.252:7893"
+        HTTPS_PROXY: "http://192.168.1.252:7893"
+    image: deepflood-signin:latest
+    container_name: deepflood-signin
+    # command 已在 Dockerfile 中定义，此处省略以避免冗余
+    environment:
+      - IN_DOCKER=true
+    env_file:
+      - .env
+    volumes:
+      # 将 data 目录挂载到主机，用于持久化数据库
+      - ./data:/app/data
+      # 将 config 目录挂载到主机，方便修改配置
+      - ./config:/app/config
+    restart: always

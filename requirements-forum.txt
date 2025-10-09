@@ -1,0 +1,39 @@
+# 论坛自动回复功能依赖包
+
+# AI和NLP (适配new-api项目)
+openai>=1.0.0
+jieba>=0.42.1
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Web Scraping &amp; Anti-Bot
+# cloudscraper>=1.2.71  # 已被 curl_cffi 替代
+curl_cffi>=0.6.4
+
+# 数据处理
+pandas>=2.0.0
+numpy>=1.24.0
+
+# 异步处理
+aiohttp>=3.8.0
+asyncio-throttle>=1.0.0
+
+# 配置和工具
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# 数据库
+aiosqlite>=0.19.0
+sqlalchemy>=2.0.0
+# sqlite3 是 Python 标准库，无需安装
+
+# 时间处理
+python-dateutil>=2.8.0
+
+# 调度
+schedule>=1.1.0
+
+# 日志
+loguru>=0.7.0
+undetected-chromedriver
+selenium
