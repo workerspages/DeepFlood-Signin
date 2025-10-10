@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import time
 import json
+import os
 import re
 import random
 from typing import Dict, List, Optional, Tuple
@@ -122,8 +123,15 @@ class DeepFloodClient:
             options.add_argument('--window-size=1920,1080')
             options.add_argument(f'--user-agent={self.session.headers["User-Agent"]}')
             
-            # 强制指定Chrome主版本号，以解决驱动不匹配问题
-            driver = uc.Chrome(options=options, version_main=140)
+            # 根据环境决定是否指定Chrome主版本号
+            # 在Docker中 (IN_DOCKER=true), 自动检测版本
+            # 在本地 (IN_DOCKER未设置), 使用指定的140版本
+            if os.getenv('IN_DOCKER', 'false').lower() == 'true':
+                print("在Docker环境中运行，自动检测Chrome版本...")
+                driver = uc.Chrome(options=options)
+            else:
+                print("在本地环境中运行，使用指定的Chrome版本 140...")
+                driver = uc.Chrome(options=options, version_main=140)
             # 解决在程序退出时可能出现的 "句柄无效" 错误
             # 通过将__del__设置为空操作，防止驱动在垃圾回收时再次尝试退出
             driver.__del__ = lambda: None

@@ -34,19 +34,25 @@ class SignInManager:
             sign_icon = WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.XPATH, "//span[@title='签到']"))
             )
-            logger.info("找到签到图标，准备点击...")
+            logger.info("找到签到图标，准备滚动并点击...")
             
-            driver.execute_script("arguments[0].scrollIntoView(true);", sign_icon)
-            time.sleep(0.5)
+            # 滚动到视图中央，避免被顶部导航栏遮挡
+            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center', inline: 'nearest'});", sign_icon)
+            logger.info("已将签到图标滚动到视图中央")
+            time.sleep(1)  # 等待滚动动画完成
             
             logger.info(f"签到图标元素: {sign_icon.get_attribute('outerHTML')}")
             
             try:
-                sign_icon.click()
-                logger.info("签到图标点击成功")
+                # 使用 ActionChains 模拟点击，更稳定
+                logger.info("尝试使用 ActionChains 点击签到图标...")
+                ActionChains(driver).move_to_element(sign_icon).click().perform()
+                logger.info("ActionChains 点击成功")
             except Exception as click_error:
-                logger.info(f"点击失败，尝试使用 JavaScript 点击: {str(click_error)}")
+                logger.warning(f"ActionChains 点击失败: {str(click_error)}")
+                logger.info("尝试使用 JavaScript 点击作为备用方案...")
                 driver.execute_script("arguments[0].click();", sign_icon)
+                logger.info("JavaScript 点击成功")
             
             logger.info("等待页面跳转...")
             time.sleep(5)
