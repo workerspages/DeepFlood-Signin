@@ -111,7 +111,16 @@ class SignInManager:
                 options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             
             logger.info("正在启动Chrome...")
-            driver = uc.Chrome(options=options, version_main=140)
+            
+            chrome_version_str = os.getenv('CHROME_VERSION')
+            kwargs = {'options': options}
+            if chrome_version_str and chrome_version_str.isdigit():
+                logger.info(f"使用指定的主版本号: {chrome_version_str}")
+                kwargs['version_main'] = int(chrome_version_str)
+            else:
+                logger.info("自动检测Chrome版本...")
+            
+            driver = uc.Chrome(**kwargs)
             
             if self.headless:
                 driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")

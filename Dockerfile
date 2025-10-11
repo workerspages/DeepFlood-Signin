@@ -11,7 +11,13 @@ ENV https_proxy=$HTTPS_PROXY
 RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
-    --no-install-recommends
+    curl \
+    --no-install-recommends && \
+    echo "--- Checking Chromium Version ---" && \
+    chromium --version && \
+    echo "--- Testing Network Connectivity to Google ---" && \
+    curl -v https://www.google.com && \
+    echo "--- Diagnostics Complete ---"
 
 # 设置时区为 GMT+8
 ENV TZ=Asia/Shanghai
