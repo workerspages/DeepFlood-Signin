@@ -123,8 +123,18 @@ class DeepFloodClient:
             options.add_argument('--window-size=1920,1080')
             options.add_argument(f'--user-agent={self.session.headers["User-Agent"]}')
             
+            # 从环境变量中获取驱动路径和版本号
+            driver_executable_path = os.getenv('DRIVER_EXECUTABLE_PATH')
             chrome_version_str = os.getenv('CHROME_VERSION')
+
             kwargs = {'options': options}
+
+            # 如果在Dockerfile中设置了驱动路径，则使用它
+            if driver_executable_path:
+                print(f"使用系统提供的驱动: {driver_executable_path}")
+                kwargs['executable_path'] = driver_executable_path
+            
+            # 如果在Dockerfile中设置了版本号，则使用它
             if chrome_version_str and chrome_version_str.isdigit():
                 print(f"使用指定的主版本号: {chrome_version_str}")
                 kwargs['version_main'] = int(chrome_version_str)

@@ -24,6 +24,7 @@ class SignInManager:
         self.cookie = cookie
         self.ns_random = random_bonus
         self.headless = headless
+        self.driver = None
 
     def click_sign_icon(self, driver):
         """
@@ -112,33 +113,47 @@ class SignInManager:
             
             logger.info("正在启动Chrome...")
             
+            # 从环境变量中获取驱动路径和版本号
+            driver_executable_path = os.getenv('DRIVER_EXECUTABLE_PATH')
             chrome_version_str = os.getenv('CHROME_VERSION')
+
             kwargs = {'options': options}
+
+            # 如果在Dockerfile中设置了驱动路径，则使用它
+            if driver_executable_path:
+                logger.info(f"使用系统提供的驱动: {driver_executable_path}")
+                kwargs['executable_path'] = driver_executable_path
+            
+            # 如果在Dockerfile中设置了版本号，则使用它
             if chrome_version_str and chrome_version_str.isdigit():
                 logger.info(f"使用指定的主版本号: {chrome_version_str}")
                 kwargs['version_main'] = int(chrome_version_str)
             else:
                 logger.info("自动检测Chrome版本...")
             
-            driver = uc.Chrome(**kwargs)
+            self.driver = uc.Chrome(**kwargs)
+
+            # 禁用 __del__ 方法，防止垃圾回收时重复调用 quit() 导致错误
+            # 我们已经在 scheduler.py 的 finally 块中手动管理了 quit() 的调用
+            self.driver.__del__ = lambda: None
             
             if self.headless:
-                driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-                driver.set_window_size(1920, 1080)
+                self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                self.driver.set_window_size(1920, 1080)
             
             logger.info("Chrome启动成功")
             
             logger.info("正在设置cookie...")
-            driver.get('https://www.deepflood.com')
+            self.driver.get('https://www.deepflood.com')
             
             time.sleep(5)
             
             for cookie_item in self.cookie.split(';'):
                 try:
                     name, value = cookie_item.strip().split('=', 1)
-                    driver.add_cookie({
-                        'name': name, 
-                        'value': value, 
+                    self.driver.add_cookie({
+                        'name': name,
+                        'value': value,
                         'domain': '.deepflood.com',
                         'path': '/'
                     })
@@ -147,10 +162,10 @@ class SignInManager:
                     continue
             
             logger.info("刷新页面...")
-            driver.refresh()
+            self.driver.refresh()
             time.sleep(5)
             
-            return driver
+            return self.driver
             
         except Exception as e:
             logger.error(f"设置浏览器和Cookie时出错: {str(e)}", exc_info=True)
@@ -158,14 +173,21 @@ class SignInManager:
 
     def run_signin(self):
         logger.info("开始执行DeepFlood签到...")
-        driver = self.setup_driver_and_cookies()
-        if not driver:
+        self.driver = self.setup_driver_and_cookies()
+        if not self.driver:
             logger.error("浏览器初始化失败")
             return
         
-        try:
-            self.click_sign_icon(driver)
-            logger.info("签到任务完成")
-        finally:
-            driver.quit()
-            logger.info("浏览器已关闭")
+        self.click_sign_icon(self.driver)
+        logger.info("签到任务完成")
+
+    def quit(self):
+        """关闭浏览器"""
+        if self.driver:
+            try:
+                self.driver.quit()
+                logger.info("浏览器已关闭")
+            except Exception as e:
+                logger.error(f"关闭浏览器时出错: {e}", exc_info=True)
+            finally:
+                self.driver = None

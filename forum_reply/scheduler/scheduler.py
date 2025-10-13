@@ -80,12 +80,12 @@ class ReplyScheduler:
 
         logger.info("步骤 0: 执行每日签到...")
         if self.config.signin.enabled:
+            signin_manager = SignInManager(
+                cookie=self.config.forum.session_cookie,
+                random_bonus=self.config.signin.random_bonus,
+                headless=self.config.signin.headless
+            )
             try:
-                signin_manager = SignInManager(
-                    cookie=self.config.forum.session_cookie,
-                    random_bonus=self.config.signin.random_bonus,
-                    headless=self.config.signin.headless
-                )
                 # 在异步函数中运行同步代码
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(None, signin_manager.run_signin)
@@ -94,6 +94,10 @@ class ReplyScheduler:
             except Exception as e:
                 self.signin_result = f"执行签到时发生错误: {e}"
                 logger.error(f"执行签到时发生错误: {e}", exc_info=True)
+            finally:
+                logger.info("正在关闭签到浏览器...")
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, signin_manager.quit)
         else:
             self.signin_result = "签到功能已禁用，跳过签到。"
             logger.info("签到功能已禁用，跳过签到。")
@@ -129,10 +133,10 @@ class ReplyScheduler:
 
             # 3. 检查每日回复限额
             daily_limit = self.config.reply.max_replies_per_day
-            replies_today = await self.db_manager.count_replies_in_last_24_hours()
+            replies_today = await self.db_manager.count_replies_today()
             remaining_replies = daily_limit - replies_today
             
-            logger.info(f"每日回复限额: {daily_limit}。过去24小时已回复: {replies_today}。剩余额度: {remaining_replies}。")
+            logger.info(f"每日回复限额: {daily_limit}。今日已回复: {replies_today}。剩余额度: {remaining_replies}。")
 
             if remaining_replies <= 0:
                 logger.info("已达到每日回复数量上限，今日不再回复。")

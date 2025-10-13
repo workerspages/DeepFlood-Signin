@@ -96,6 +96,17 @@ class DatabaseManager:
             result = await cursor.fetchone()
             return result[0] if result else 0
  
+    async def count_replies_today(self) -> int:
+        """统计从今天零点（UTC）开始的成功回复数量"""
+        async with aiosqlite.connect(self.db_path) as db:
+            today_start = datetime.combine(datetime.utcnow().date(), datetime.min.time())
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM reply_history WHERE replied_at >= ?",
+                (today_start,)
+            )
+            result = await cursor.fetchone()
+            return result[0] if result else 0
+
     async def start_run_log(self) -> int:
         """开始一次运行并记录日志，返回日志ID"""
         async with aiosqlite.connect(self.db_path) as db:

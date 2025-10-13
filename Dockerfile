@@ -12,12 +12,14 @@ RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
     curl \
-    --no-install-recommends && \
-    echo "--- Checking Chromium Version ---" && \
-    chromium --version && \
-    echo "--- Testing Network Connectivity to Google ---" && \
-    curl -v https://www.google.com && \
-    echo "--- Diagnostics Complete ---"
+    --no-install-recommends
+
+# 设置环境变量，让 undetected_chromedriver 使用系统安装的驱动
+# 这可以避免在Docker中自动下载驱动可能遇到的网络问题或权限问题
+ENV DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver
+# 自动检测并设置Chrome主版本号
+RUN CHROME_MAJOR_VERSION=$(chromium --version | grep -oP 'Chromium \K\d+') && \
+    echo "CHROME_VERSION=${CHROME_MAJOR_VERSION}" >> /etc/environment
 
 # 设置时区为 GMT+8
 ENV TZ=Asia/Shanghai
