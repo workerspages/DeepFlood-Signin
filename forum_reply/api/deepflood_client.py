@@ -245,21 +245,21 @@ class DeepFloodClient:
         try:
             url = f"{self.config.base_url}/post-{post_id}-1"
             
-            # 更新referer和签名
+            # 更新referer
             headers = self.session.headers.copy()
             headers['referer'] = url
-            # headers['refract-sign'] = self._generate_refract_sign(f"/post-{post_id}-1") # 禁用
             
             response = self.session.get(url, headers=headers)
             
             if response.status_code == 200:
                 return self._parse_post_detail(response.text, post_id, url)
             else:
-                print(f"获取帖子详情失败: {response.status_code}")
+                # 【重要修改】打印详细的失败状态码
+                print(f"获取帖子 {post_id} 详情失败, HTTP 状态码: {response.status_code}")
                 return None
                 
         except Exception as e:
-            print(f"获取帖子详情异常: {e}")
+            print(f"获取帖子 {post_id} 详情时发生网络异常: {e}")
             return None
     
     def _parse_post_detail(self, html_content: str, post_id: int, url: str) -> Optional[ForumPost]:
