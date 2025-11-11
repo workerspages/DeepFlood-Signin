@@ -194,6 +194,10 @@ class ConfigManager:
             self.reply_config.max_length = int(os.getenv("REPLY_MAX_LENGTH"))
         if os.getenv("REPLY_MIN_LENGTH"):
             self.reply_config.min_length = int(os.getenv("REPLY_MIN_LENGTH"))
+            
+        # 调度器配置
+        if os.getenv("SCHEDULER_START_TIME"):
+            self.scheduler_config.start_time = os.getenv("SCHEDULER_START_TIME")
     
     def _update_dataclass(self, obj: Any, data: Dict[str, Any]):
         """更新数据类对象"""
