@@ -1,20 +1,53 @@
 services:
   deepflood-signin:
-    build:
-      context: .
-      args:
-        HTTP_PROXY: "http://127.0.0.1:7890"
-        HTTPS_PROXY: "http://127.0.0.1:7890"
-    image: deepflood-signin:latest
+    # 使用 ghcr.io 上预构建的官方镜像
+    image: ghcr.io/workerspages/deepflood-signin:latest
     container_name: deepflood-signin
-    # command 已在 Dockerfile 中定义，此处省略以避免冗余
     environment:
-      - IN_DOCKER=true
-    env_file:
-      - .env
+      # ==================================================
+      # 核心配置 (请务必修改)
+      # ==================================================
+      
+      # 论坛配置
+      - FORUM_SESSION_COOKIE="your_session_cookie_here"
+      - FORUM_BASE_URL="https://www.deepflood.com"
+      
+      # AI 配置
+      - AI_API_KEY="your_ai_api_key_here"
+      - AI_BASE_URL="your_ai_base_url_here"
+      - AI_MODEL="your_ai_model_here"
+      
+      # ==================================================
+      # 调度器与功能开关
+      # ==================================================
+      
+      # 任务开始时间 (HH:MM 格式)
+      - SCHEDULER_START_TIME=09:00
+      # 全局回复开关 (true 或 false)
+      - REPLY_ENABLED=true
+      
+      # ==================================================
+      # 通知服务配置 (可选)
+      # ==================================================
+      
+      # Telegram 机器人 Token
+      - TG_BOT_TOKEN=
+      # Telegram 用户的 User ID
+      - TG_USER_ID=
+      
+      # ==================================================
+      # 环境配置 (一般无需修改)
+      # ==================================================
+      
+      # 标记在 Docker 容器中运行
+      - IN_DOKCER=true
+      # 为本地运行环境指定Chrome主版本号，在Docker中请留空
+      - CHROME_VERSION=
+      
     volumes:
       # 将 data 目录挂载到主机，用于持久化数据库
       - ./data:/app/data
       # 将 config 目录挂载到主机，方便修改配置
       - ./config:/app/config
+      
     restart: always
