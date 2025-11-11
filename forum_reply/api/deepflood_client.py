@@ -115,6 +115,9 @@ class DeepFloodClient:
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
             options.add_argument(f'--user-agent={self.session.headers["User-Agent"]}')
+            # 增加浏览器人性化参数
+            options.add_argument('--lang=zh-CN,zh')
+            options.add_argument('--disable-infobars')
             
             # 从环境变量中获取驱动路径和版本号
             driver_executable_path = os.getenv('DRIVER_EXECUTABLE_PATH')
@@ -132,6 +135,9 @@ class DeepFloodClient:
             
             driver = uc.Chrome(**kwargs)
             driver.__del__ = lambda: None
+            
+            # 伪装 webdriver 属性
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
             print("浏览器启动成功，正在设置cookie...")
             # 访问主页是设置cookie的最佳实践
@@ -224,8 +230,15 @@ class DeepFloodClient:
                 return None
 
             driver.get(url)
-            # 等待页面标题出现，确保页面已加载
-            WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'h1.post-title, .post-title h1')))
+            
+            # 更可靠的等待条件：等待帖子正文内容出现
+            print(f"等待帖子 {post_id} 正文加载...")
+            WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'article.post-content'))
+            )
+            
+            # 增加人性化延迟，等待JS渲染完成
+            time.sleep(random.uniform(1.5, 2.5))
 
             html_content = driver.page_source
             
@@ -290,14 +303,17 @@ class DeepFloodClient:
             driver.get(post_url)
 
             print("等待评论框加载...")
-            editor = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror')))
-            editor.click()
+            editor_container = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, '.CodeMirror')))
+            
+            # 点击 CodeMirror 内部的可输入区域
+            editor_input_area = driver.find_element(By.CSS_SELECTOR, '.CodeMirror-scroll')
+            editor_input_area.click()
             time.sleep(0.5)
             print("评论框已聚焦，准备输入内容...")
 
             actions = ActionChains(driver)
-            for char in content:
-                actions.send_keys(char).pause(random.uniform(0.1, 0.3)).perform()
+            # 使用更稳定的方式输入内容
+            actions.send_keys(content).perform()
             
             print("内容输入完成，准备提交...")
             time.sleep(2)
