@@ -20,7 +20,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from urllib.parse import urlparse
 from ..config.config_manager import ForumConfig
-import logging  # 【重要修正】导入 logging 模块
+import logging
 
 # 配置此模块的日志记录器
 logger = logging.getLogger(__name__)
@@ -92,6 +92,10 @@ class DeepFloodClient:
                 kwargs['version_main'] = int(os.getenv('CHROME_VERSION'))
             
             driver = uc.Chrome(**kwargs)
+
+            # 【重要修正】给浏览器进程一点反应时间来完全初始化
+            time.sleep(2)
+            
             driver.get(self.config.base_url)
             time.sleep(2)
             for name, value in self.cookies.items():
