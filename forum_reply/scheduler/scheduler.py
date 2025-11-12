@@ -6,6 +6,7 @@
 import asyncio
 import random
 import logging
+import os
 from typing import List, Dict, Any
 
 from ..config.config_manager import ConfigManager, ForumConfig
@@ -70,7 +71,6 @@ class ReplyScheduler:
         logger.info("正在初始化调度器...")
         await self.db_manager.initialize()
         logger.info("数据库初始化完成。")
-        # 可以在这里添加其他初始化逻辑，如检查API连通性等
         logger.info("调度器初始化完成。")
 
     async def run_single_cycle(self):
@@ -78,29 +78,34 @@ class ReplyScheduler:
         logger.info("="*50)
         logger.info("开始新一轮自动回复周期...")
 
-        logger.info("步骤 0: 执行每日签到...")
+        logger.info("步骤 0: 执行每日签到 (并自动刷新Cookie)...")
+        signin_manager = None
         if self.config.signin.enabled:
-            signin_manager = SignInManager(
-                cookie=self.config.forum.session_cookie,
-                random_bonus=self.config.signin.random_bonus,
-                headless=self.config.signin.headless
-            )
             try:
-                # 在异步函数中运行同步代码
+                # 初始化 SignInManager 时传入 Cookie 文件路径
+                signin_manager = SignInManager(
+                    cookie=self.config.forum.session_cookie,
+                    random_bonus=self.config.signin.random_bonus,
+                    headless=self.config.signin.headless,
+                    cookie_file_path=self.config.forum.cookie_file_path
+                )
+                
+                # 在异步函数中运行同步的浏览器操作
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(None, signin_manager.run_signin)
-                self.signin_result = "每日签到成功完成。"
-                logger.info("每日签到完成。")
+                self.signin_result = "每日签到成功完成，并已刷新Cookie。"
+                logger.info("每日签到完成，并已刷新Cookie。")
             except Exception as e:
-                self.signin_result = f"执行签到时发生错误: {e}"
-                logger.error(f"执行签到时发生错误: {e}", exc_info=True)
+                self.signin_result = f"执行签到或刷新Cookie时发生错误: {e}"
+                logger.error(f"执行签到或刷新Cookie时发生错误: {e}", exc_info=True)
             finally:
-                logger.info("正在关闭签到浏览器...")
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, signin_manager.quit)
+                if signin_manager:
+                    logger.info("正在关闭签到浏览器...")
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, signin_manager.quit)
         else:
-            self.signin_result = "签到功能已禁用，跳过签到。"
-            logger.info("签到功能已禁用，跳过签到。")
+            self.signin_result = "签到功能已禁用，跳过签到和Cookie刷新。"
+            logger.info("签到功能已禁用，跳过签到和Cookie刷新。")
         
         log_id = await self.db_manager.start_run_log()
         self._reset_stats()
@@ -118,7 +123,6 @@ class ReplyScheduler:
             logger.info(f"获取到 {len(latest_posts)} 个帖子。")
 
             # 2. 筛选未处理的帖子
-            logger.info("步骤 2: 筛选未处理的帖子...")
             new_posts = []
             for post in latest_posts:
                 if not await self.db_manager.is_post_processed(post['post_id']):
@@ -217,16 +221,6 @@ class ReplyScheduler:
             reply_content = await self.short_reply_generator.generate_reply(post_detail.title, post_detail.content)
             logger.info(f"AI生成回复: '{reply_content}'")
 
-            # 质量检查 (暂时禁用)
-            # quality_score = self.quality_checker.check_quality(reply_content, post_detail.title, post_detail.content, analysis)
-            # logger.info(f"回复质量检查得分: {quality_score.total_score:.2f}. 是否通过: {quality_score.pass_threshold}")
-
-            # if not quality_score.pass_threshold:
-            #     logger.warning(f"回复质量不通过，跳过此贴。原因: {quality_score.feedback}")
-            #     await self.db_manager.update_post_status(post_id, 'skipped', f"Quality check failed: {quality_score.feedback}")
-            #     self.run_stats["skipped_count"] += 1
-            #     return
-
             # 发送回复
             success, message = await self.api_wrapper.safe_post_comment(post_id, reply_content)
             if success:
@@ -239,10 +233,10 @@ class ReplyScheduler:
                 await self.db_manager.add_reply_history(
                     post_id=post_id,
                     reply_content=reply_content,
-                    quality_score=1.0,  # 禁用质量检查，默认为1.0
+                    quality_score=1.0,
                     ai_provider=self.config.ai.short_reply.provider,
                     ai_model=self.config.ai.short_reply.model,
-                    is_fallback=False # 假设目前没有回退逻辑
+                    is_fallback=False
                 )
                 self.run_stats["replies_sent"] += 1
             else:
@@ -269,12 +263,9 @@ class ReplyScheduler:
 
 async def main():
     """用于测试调度器的主函数"""
-    # 确保配置文件存在
     config_file = "config/forum_config.json"
-    import os
     if not os.path.exists(config_file):
         logger.error(f"配置文件 {config_file} 不存在。请先创建。")
-        # 可以在这里调用 ConfigManager.create_default_config() 来创建
         return
 
     scheduler = ReplyScheduler(config_path=config_file)
@@ -282,8 +273,4 @@ async def main():
     await scheduler.run_single_cycle()
 
 if __name__ == "__main__":
-    # 注意：直接运行此文件可能因为相对导入问题而出错
-    # 需要在项目根目录通过 `python -m forum_reply.scheduler.scheduler` 来运行
-    # 此处 main 调用仅为示例
-    # asyncio.run(main())
     pass
