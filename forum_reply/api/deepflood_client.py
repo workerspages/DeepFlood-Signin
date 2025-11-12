@@ -20,10 +20,23 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from urllib.parse import urlparse
 from ..config.config_manager import ForumConfig
+import logging  # 【重要修正】导入 logging 模块
+
+# 配置此模块的日志记录器
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ForumPost:
-    post_id: int; title: str; content: str; author: str; author_id: int; category: str; created_time: datetime; reply_count: int; view_count: int; url: str
+    post_id: int
+    title: str
+    content: str
+    author: str
+    author_id: int
+    category: str
+    created_time: datetime
+    reply_count: int
+    view_count: int
+    url: str
 
 class DeepFloodClient:
     def __init__(self, config: ForumConfig):
@@ -32,8 +45,9 @@ class DeepFloodClient:
         self.cookies = self._parse_cookie(config.session_cookie)
 
     def _parse_cookie(self, cookie_str: str) -> Dict[str, str]:
-        cookies = {}; 
-        if not cookie_str: return cookies
+        cookies = {}
+        if not cookie_str:
+            return cookies
         for item in cookie_str.split(';'):
             if '=' in item:
                 key, value = item.strip().split('=', 1)
@@ -43,10 +57,12 @@ class DeepFloodClient:
     def _save_cookies_from_driver(self, driver):
         try:
             current_cookies = driver.get_cookies()
-            if not current_cookies: return
+            if not current_cookies:
+                return
             required_keys = ['cf_clearance', 'session', 'smac', 'fog']
             filtered_cookies = [c for c in current_cookies if c['name'] in required_keys]
-            if len(filtered_cookies) < len(required_keys): return
+            if len(filtered_cookies) < len(required_keys):
+                return
             new_cookie_string = "; ".join([f"{c['name']}={c['value']}" for c in filtered_cookies])
             if new_cookie_string and new_cookie_string != self.session_cookie:
                 cookie_data = {"cookie_string": new_cookie_string, "updated_at": datetime.now().isoformat()}
@@ -58,16 +74,22 @@ class DeepFloodClient:
         except Exception as e:
             logger.error(f"保存最新Cookie时发生错误: {e}")
 
-    # 【重要修改】setup_driver 现在是一个公开方法，由 Scheduler 调用
     def setup_driver(self):
         try:
             logger.info("创建并设置共享浏览器实例...")
             options = uc.ChromeOptions()
-            options.add_argument('--no-sandbox'); options.add_argument('--disable-dev-shm-usage'); options.add_argument('--headless'); options.add_argument('--disable-blink-features=AutomationControlled'); options.add_argument('--disable-gpu'); options.add_argument('--window-size=1920,1080')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--headless')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('--disable-gpu')
+            options.add_argument('--window-size=1920,1080')
             options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             kwargs = {'options': options}
-            if os.getenv('DRIVER_EXECUTABLE_PATH'): kwargs['executable_path'] = os.getenv('DRIVER_EXECUTABLE_PATH')
-            if os.getenv('CHROME_VERSION') and os.getenv('CHROME_VERSION').isdigit(): kwargs['version_main'] = int(os.getenv('CHROME_VERSION'))
+            if os.getenv('DRIVER_EXECUTABLE_PATH'):
+                kwargs['executable_path'] = os.getenv('DRIVER_EXECUTABLE_PATH')
+            if os.getenv('CHROME_VERSION') and os.getenv('CHROME_VERSION').isdigit():
+                kwargs['version_main'] = int(os.getenv('CHROME_VERSION'))
             
             driver = uc.Chrome(**kwargs)
             driver.get(self.config.base_url)
@@ -99,7 +121,6 @@ class DeepFloodClient:
             logger.error(f"获取RSS异常: {e}")
             return []
 
-    # 【重要修改】get_post_detail 接受 driver 参数，且不再创建或关闭它
     def get_post_detail(self, post_id: int, driver) -> Optional[ForumPost]:
         try:
             url = f"{self.config.base_url}/post-{post_id}-1"
@@ -115,7 +136,6 @@ class DeepFloodClient:
             logger.error(f"使用浏览器获取帖子 {post_id} 详情时发生异常: {e}")
             return None
 
-    # 【重要修改】post_comment 接受 driver 参数，且不再创建或关闭它
     def post_comment(self, post_id: int, content: str, driver) -> Tuple[bool, str]:
         try:
             post_url = f'{self.config.base_url}/post-{post_id}-1'
@@ -132,7 +152,3 @@ class DeepFloodClient:
         except Exception as e:
             logger.error(f"使用Selenium评论时出错: {e}", exc_info=True)
             return False, str(e)
-
-# 辅助类和函数的日志记录器
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
