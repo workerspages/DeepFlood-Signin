@@ -120,9 +120,14 @@ class ReplyScheduler:
             analysis = self.content_analyzer.analyze(post_detail.title, post_detail.content)
             reply_content = await self.short_reply_generator.generate_reply(post_detail.title, post_detail.content)
             
+            # 【新增】打印 AI 生成的回复内容，以便在日志中查看
+            logger.info(f"AI 拟定回复内容: \"{reply_content}\"")
+            
             # 【重要修改】使用共享的 driver 实例发送回复
             success, message = await loop.run_in_executor(None, self.api_client.post_comment, post_id, reply_content, driver)
             if success:
+                # 【新增】发送成功确认日志
+                logger.info(f"✅ 回复发送成功 (ID: {post_id})")
                 self.replied_posts_details.append({"title": post_title, "reply_content": reply_content})
                 await self.db_manager.update_post_status(post_id, 'replied')
                 await self.db_manager.add_reply_history(post_id=post_id, reply_content=reply_content, ai_provider=self.config.ai.short_reply.provider, ai_model=self.config.ai.short_reply.model)
