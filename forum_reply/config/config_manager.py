@@ -16,13 +16,13 @@ class ForumConfig:
     """论坛API配置"""
     base_url: str = "https://www.deepflood.com"
     session_cookie: str = ""
-    user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     request_timeout: int = 30
     max_retries: int = 3
     rate_limit_per_minute: int = 20
     enable_proxy: bool = False
     proxy_url: str = ""
-    # 【新增】定义持久化 Cookie 文件的路径
+    # 定义持久化 Cookie 文件的路径
     cookie_file_path: str = "config/cookie.json"
 
 
@@ -119,8 +119,8 @@ class ConfigManager:
     
     def load_config(self):
         """
-        【修改】加载配置，并建立优先级:
-        1. 持久化的 cookie.json 文件 (最高)
+        加载配置，并建立优先级:
+        1. 持久化的 cookie.json 文件 (最高, 仅针对Cookie)
         2. 环境变量 (docker-compose.yml)
         3. forum_config.json 文件 (最低)
         """
@@ -136,7 +136,7 @@ class ConfigManager:
             # 2. 从环境变量覆盖
             self._load_from_env()
             
-            # 3. 【新增】尝试从持久化文件加载最新Cookie (最高优先级)
+            # 3. 尝试从持久化文件加载最新Cookie (最高优先级)
             self._load_cookie_from_file()
             
             # 4. 验证最终配置
@@ -147,7 +147,7 @@ class ConfigManager:
             raise
             
     def _load_cookie_from_file(self):
-        """【新增】从持久化的 cookie.json 文件加载 Cookie"""
+        """从持久化的 cookie.json 文件加载 Cookie"""
         cookie_file = self.forum_config.cookie_file_path
         try:
             if os.path.exists(cookie_file):
@@ -180,20 +180,107 @@ class ConfigManager:
             raise
     
     def _load_from_env(self):
-        """从环境变量加载配置"""
-        # 【修改】仅在 self.forum_config.session_cookie 为空时才从环境变量加载，确立优先级
-        if not self.forum_config.session_cookie and os.getenv("FORUM_SESSION_COOKIE"):
-            self.forum_config.session_cookie = os.getenv("FORUM_SESSION_COOKIE")
+        """从环境变量加载配置 (支持所有配置项)"""
+        
+        # --- Helper Functions ---
+        def get_env(key: str, default: Any = None) -> Optional[str]:
+            return os.getenv(key, default)
+
+        def get_bool(key: str) -> Optional[bool]:
+            val = get_env(key)
+            if val is not None:
+                return val.lower() == 'true'
+            return None
+
+        def get_int(key: str) -> Optional[int]:
+            val = get_env(key)
+            if val is not None and val.isdigit():
+                return int(val)
+            return None
+
+        def get_float(key: str) -> Optional[float]:
+            val = get_env(key)
+            if val is not None:
+                try:
+                    return float(val)
+                except ValueError:
+                    return None
+            return None
+
+        def get_list(key: str) -> Optional[List[str]]:
+            val = get_env(key)
+            if val is not None:
+                # 假设列表用逗号分隔，且去除空项
+                return [item.strip() for item in val.split(',') if item.strip()]
+            return None
+
+        # --- 1. Forum Config (API) ---
+        if not self.forum_config.session_cookie and get_env("FORUM_SESSION_COOKIE"):
+            self.forum_config.session_cookie = get_env("FORUM_SESSION_COOKIE")
             print("从环境变量加载初始Cookie。")
         
-        if os.getenv("FORUM_BASE_URL"): self.forum_config.base_url = os.getenv("FORUM_BASE_URL")
-        if os.getenv("AI_API_KEY"): self.ai_config.api_key = os.getenv("AI_API_KEY")
-        if os.getenv("AI_BASE_URL"): self.ai_config.base_url = os.getenv("AI_BASE_URL")
-        if os.getenv("AI_MODEL"): self.ai_config.model = os.getenv("AI_MODEL")
-        if os.getenv("REPLY_ENABLED"): self.reply_config.enabled = os.getenv("REPLY_ENABLED").lower() == "true"
-        if os.getenv("REPLY_MAX_LENGTH"): self.reply_config.max_length = int(os.getenv("REPLY_MAX_LENGTH"))
-        if os.getenv("REPLY_MIN_LENGTH"): self.reply_config.min_length = int(os.getenv("REPLY_MIN_LENGTH"))
-        if os.getenv("SCHEDULER_START_TIME"): self.scheduler_config.start_time = os.getenv("SCHEDULER_START_TIME")
+        if get_env("FORUM_BASE_URL"): self.forum_config.base_url = get_env("FORUM_BASE_URL")
+        if get_env("FORUM_USER_AGENT"): self.forum_config.user_agent = get_env("FORUM_USER_AGENT")
+        if get_int("FORUM_REQUEST_TIMEOUT"): self.forum_config.request_timeout = get_int("FORUM_REQUEST_TIMEOUT")
+        if get_int("FORUM_MAX_RETRIES"): self.forum_config.max_retries = get_int("FORUM_MAX_RETRIES")
+        if get_int("FORUM_RATE_LIMIT_PER_MINUTE"): self.forum_config.rate_limit_per_minute = get_int("FORUM_RATE_LIMIT_PER_MINUTE")
+        if get_bool("FORUM_ENABLE_PROXY") is not None: self.forum_config.enable_proxy = get_bool("FORUM_ENABLE_PROXY")
+        if get_env("FORUM_PROXY_URL"): self.forum_config.proxy_url = get_env("FORUM_PROXY_URL")
+
+        # --- 2. AI Config ---
+        if get_env("AI_PROVIDER"): self.ai_config.provider = get_env("AI_PROVIDER")
+        if get_env("AI_API_KEY"): self.ai_config.api_key = get_env("AI_API_KEY")
+        if get_env("AI_BASE_URL"): self.ai_config.base_url = get_env("AI_BASE_URL")
+        if get_env("AI_MODEL"): self.ai_config.model = get_env("AI_MODEL")
+        if get_int("AI_MAX_TOKENS"): self.ai_config.max_tokens = get_int("AI_MAX_TOKENS")
+        if get_float("AI_TEMPERATURE"): self.ai_config.temperature = get_float("AI_TEMPERATURE")
+
+        # --- 3. Reply Config ---
+        if get_bool("REPLY_ENABLED") is not None: self.reply_config.enabled = get_bool("REPLY_ENABLED")
+        if get_float("REPLY_PROBABILITY"): self.reply_config.reply_probability = get_float("REPLY_PROBABILITY")
+        if get_int("REPLY_MIN_DELAY_SECONDS"): self.reply_config.min_delay_seconds = get_int("REPLY_MIN_DELAY_SECONDS")
+        if get_int("REPLY_MAX_DELAY_SECONDS"): self.reply_config.max_delay_seconds = get_int("REPLY_MAX_DELAY_SECONDS")
+        if get_int("REPLY_MAX_REPLIES_PER_HOUR"): self.reply_config.max_replies_per_hour = get_int("REPLY_MAX_REPLIES_PER_HOUR")
+        if get_int("REPLY_MAX_REPLIES_PER_DAY"): self.reply_config.max_replies_per_day = get_int("REPLY_MAX_REPLIES_PER_DAY")
+        if get_int("REPLY_MAX_LENGTH"): self.reply_config.max_length = get_int("REPLY_MAX_LENGTH")
+        if get_int("REPLY_MIN_LENGTH"): self.reply_config.min_length = get_int("REPLY_MIN_LENGTH")
+        if get_bool("REPLY_ENABLE_EMOJI") is not None: self.reply_config.enable_emoji = get_bool("REPLY_ENABLE_EMOJI")
+        if get_bool("REPLY_TEMPLATE_FALLBACK") is not None: self.reply_config.template_fallback = get_bool("REPLY_TEMPLATE_FALLBACK")
+
+        # --- 4. Filter Config ---
+        if get_int("FILTER_MIN_POST_AGE_MINUTES"): self.filter_config.min_post_age_minutes = get_int("FILTER_MIN_POST_AGE_MINUTES")
+        if get_int("FILTER_MAX_POST_AGE_HOURS"): self.filter_config.max_post_age_hours = get_int("FILTER_MAX_POST_AGE_HOURS")
+        if get_list("FILTER_EXCLUDED_KEYWORDS"): self.filter_config.excluded_keywords = get_list("FILTER_EXCLUDED_KEYWORDS")
+        if get_list("FILTER_REQUIRED_KEYWORDS"): self.filter_config.required_keywords = get_list("FILTER_REQUIRED_KEYWORDS")
+        if get_int("FILTER_MIN_CONTENT_LENGTH"): self.filter_config.min_content_length = get_int("FILTER_MIN_CONTENT_LENGTH")
+        if get_int("FILTER_MAX_CONTENT_LENGTH"): self.filter_config.max_content_length = get_int("FILTER_MAX_CONTENT_LENGTH")
+        if get_list("FILTER_EXCLUDED_CATEGORIES"): self.filter_config.excluded_categories = get_list("FILTER_EXCLUDED_CATEGORIES")
+
+        # --- 5. Database Config ---
+        if get_env("DATABASE_PATH"): self.database_config.path = get_env("DATABASE_PATH")
+        if get_bool("DATABASE_BACKUP_ENABLED") is not None: self.database_config.backup_enabled = get_bool("DATABASE_BACKUP_ENABLED")
+        if get_int("DATABASE_BACKUP_INTERVAL_HOURS"): self.database_config.backup_interval_hours = get_int("DATABASE_BACKUP_INTERVAL_HOURS")
+
+        # --- 6. Logging Config ---
+        if get_env("LOGGING_LEVEL"): self.logging_config.level = get_env("LOGGING_LEVEL")
+        if get_env("LOGGING_FILE_PATH"): self.logging_config.file_path = get_env("LOGGING_FILE_PATH")
+        if get_env("LOGGING_MAX_FILE_SIZE"): self.logging_config.max_file_size = get_env("LOGGING_MAX_FILE_SIZE")
+        if get_int("LOGGING_BACKUP_COUNT"): self.logging_config.backup_count = get_int("LOGGING_BACKUP_COUNT")
+
+        # --- 7. Scheduler Config ---
+        if get_env("SCHEDULER_RUN_MODE"): self.scheduler_config.run_mode = get_env("SCHEDULER_RUN_MODE")
+        if get_env("SCHEDULER_START_TIME"): self.scheduler_config.start_time = get_env("SCHEDULER_START_TIME")
+        if get_int("SCHEDULER_RUNS_PER_DAY"): self.scheduler_config.runs_per_day = get_int("SCHEDULER_RUNS_PER_DAY")
+        if get_int("SCHEDULER_TIME_BETWEEN_RUNS_MIN"): self.scheduler_config.time_between_runs_minutes_min = get_int("SCHEDULER_TIME_BETWEEN_RUNS_MIN")
+        if get_int("SCHEDULER_TIME_BETWEEN_RUNS_MAX"): self.scheduler_config.time_between_runs_minutes_max = get_int("SCHEDULER_TIME_BETWEEN_RUNS_MAX")
+        if get_int("SCHEDULER_MIN_POST_INTERVAL_SECONDS"): self.scheduler_config.min_post_interval_seconds = get_int("SCHEDULER_MIN_POST_INTERVAL_SECONDS")
+        if get_int("SCHEDULER_MAX_POST_INTERVAL_SECONDS"): self.scheduler_config.max_post_interval_seconds = get_int("SCHEDULER_MAX_POST_INTERVAL_SECONDS")
+
+        # --- 8. SignIn Config ---
+        if get_bool("SIGNIN_ENABLED") is not None: self.signin_config.enabled = get_bool("SIGNIN_ENABLED")
+        if get_bool("SIGNIN_RANDOM_BONUS") is not None: self.signin_config.random_bonus = get_bool("SIGNIN_RANDOM_BONUS")
+        if get_bool("SIGNIN_HEADLESS") is not None: self.signin_config.headless = get_bool("SIGNIN_HEADLESS")
+
     
     def _update_dataclass(self, obj: Any, data: Dict[str, Any]):
         """更新数据类对象"""
@@ -213,7 +300,6 @@ class ConfigManager:
         if self.reply_config.max_length > 10: print("警告: 回复最大长度超过10字，建议设置为10字以内")
         if self.reply_config.max_delay_seconds < self.reply_config.min_delay_seconds: raise ValueError("最大延迟不能小于最小延迟")
 
-    # (省略了 save_config, get_... 等其他未修改的函数，以保持简洁)
     def save_config(self):
         """保存配置到文件"""
         try:
@@ -234,6 +320,7 @@ class ConfigManager:
         except Exception as e:
             print(f"保存配置失败: {e}")
             raise
+
     def get_forum_config(self) -> ForumConfig: return self.forum_config
     def get_ai_config(self) -> AIConfig: return self.ai_config
     def get_reply_config(self) -> ReplyConfig: return self.reply_config
@@ -242,6 +329,7 @@ class ConfigManager:
     def get_logging_config(self) -> LoggingConfig: return self.logging_config
     def get_scheduler_config(self) -> "SchedulerConfig": return self.scheduler_config
     def get_signin_config(self) -> "SignInConfig": return self.signin_config
+    
     def get_config(self) -> Any:
         from types import SimpleNamespace
         config = SimpleNamespace()
@@ -256,8 +344,18 @@ class ConfigManager:
         config.scheduler = self.scheduler_config
         config.signin = self.signin_config
         return config
+
     def update_config(self, section: str, key: str, value: Any):
-        config_map = {'forum': self.forum_config,'ai': self.ai_config,'reply': self.reply_config,'filter': self.filter_config,'database': self.database_config,'logging': self.logging_config}
+        config_map = {
+            'forum': self.forum_config,
+            'ai': self.ai_config,
+            'reply': self.reply_config,
+            'filter': self.filter_config,
+            'database': self.database_config,
+            'logging': self.logging_config,
+            'scheduler': self.scheduler_config,
+            'signin': self.signin_config
+        }
         if section in config_map:
             config_obj = config_map[section]
             if hasattr(config_obj, key):
@@ -265,20 +363,31 @@ class ConfigManager:
                 print(f"配置更新: {section}.{key} = {value}")
             else: raise ValueError(f"配置项不存在: {section}.{key}")
         else: raise ValueError(f"配置节不存在: {section}")
+
     def get_config_summary(self) -> Dict[str, Any]:
         return {
             'forum': {'base_url': self.forum_config.base_url,'has_cookie': bool(self.forum_config.session_cookie),'rate_limit': self.forum_config.rate_limit_per_minute},
             'ai': {'provider': self.ai_config.provider,'model': self.ai_config.model,'base_url': self.ai_config.base_url,'has_api_key': bool(self.ai_config.api_key)},
             'reply': {'enabled': self.reply_config.enabled,'length_range': f"{self.reply_config.min_length}-{self.reply_config.max_length}",'delay_range': f"{self.reply_config.min_delay_seconds}-{self.reply_config.max_delay_seconds}s",'max_per_hour': self.reply_config.max_replies_per_hour}
         }
+
+    @staticmethod
+    def create_default_config(file_path: str):
+        """创建默认配置文件"""
+        manager = ConfigManager(file_path)
+        manager.save_config()
+
+
 _config_manager = None
 def get_config_manager(config_file: str = "config/forum_config.json") -> ConfigManager:
     global _config_manager
     if _config_manager is None: _config_manager = ConfigManager(config_file)
     return _config_manager
+
 def reload_config():
     global _config_manager
     if _config_manager: _config_manager.load_config()
+
 if __name__ == "__main__":
     config = ConfigManager()
     print("配置摘要:")
