@@ -65,61 +65,58 @@ touch config/forum_config.json
 ```yaml
 services:
   deepflood-signin:
+    # 使用 ghcr.io 上预构建的官方镜像
     image: ghcr.io/workerspages/deepflood-signin:latest
     container_name: deepflood-signin
-    
-    # 增加共享内存，这对于运行浏览器自动化非常重要，可以防止其崩溃
-    shm_size: 2gb
-    
     environment:
       # ==================================================
       # 核心配置 (请务必修改)
       # ==================================================
       
-      # 【首次运行】请在这里粘贴您最新的、完整的 Cookie 字符串
-      # 详细获取方法见下文
-      - FORUM_SESSION_COOKIE="在这里粘贴您最新的、完整的Cookie字符串"
+      # 论坛配置
+      - FORUM_SESSION_COOKIE=your_session_cookie_here
+      - FORUM_BASE_URL=https://www.deepflood.com
       
-      # AI 配置 (请根据您的服务商修改)
-      - AI_API_KEY="your_ai_api_key_here" 
-      - AI_BASE_URL="your_ai_base_url_here"
-      - AI_MODEL="your_ai_model_here"
+      # AI 配置
+      - AI_API_KEY=your_ai_api_key_here
+      - AI_BASE_URL=your_ai_base_url_here
+      - AI_MODEL=your_ai_model_here
       
       # ==================================================
       # 调度器与功能开关
       # ==================================================
       
-      # 任务开始时间 (HH:MM 格式，例如 09:30)
-      - SCHEDULER_START_TIME="09:30"
+      # 任务开始时间 (HH:MM 格式)
+      - SCHEDULER_START_TIME=09:00
+      # 全局回复开关 (true 或 false)
       - REPLY_ENABLED=true
-      - CHROME_VERSION=142
-      - DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver
       
       # ==================================================
-      # 通知配置 (可选)
+      # 通知服务配置 (可选)
       # ==================================================
       
       # Telegram 机器人 Token
-      - TG_BOT_TOKEN="" 
+      - TG_BOT_TOKEN=
       # Telegram 用户的 User ID
-      - TG_USER_ID=""
+      - TG_USER_ID=
       
       # ==================================================
-      # 环境配置 (关键修复，请勿修改)
+      # 环境配置 (一般无需修改)
       # ==================================================
       
-      - FORUM_BASE_URL="https://www.deepflood.com"
-      - IN_DOCKER=true
-      # 【至关重要】这一行必须存在且有值，以避免 SSL 错误
-      - CHROME_VERSION="124"
+      # 标记在 Docker 容器中运行
+      - IN_DOKCER=true
+      # 为本地运行环境指定Chrome主版本号，在Docker中请留空
+      - CHROME_VERSION=
       
     volumes:
       # 将 data 目录挂载到主机，用于持久化数据库
       - ./data:/app/data
-      # 将 config 目录挂载到主机，用于持久化 cookie.json
+      # 将 config 目录挂载到主机，方便修改配置
       - ./config:/app/config
       
     restart: always
+
 ```
 
 #### 4. 构建并启动容器
