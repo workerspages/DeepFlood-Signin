@@ -65,9 +65,7 @@ touch config/forum_config.json
 ```yaml
 services:
   deepflood-signin:
-    # 使用 build 指令，强制 Docker 使用您本地的代码和 Dockerfile
-    build: .
-    
+    image: ghcr.io/workerspages/deepflood-signin:latest
     container_name: deepflood-signin
     
     # 增加共享内存，这对于运行浏览器自动化非常重要，可以防止其崩溃
@@ -94,6 +92,8 @@ services:
       # 任务开始时间 (HH:MM 格式，例如 09:30)
       - SCHEDULER_START_TIME="09:30"
       - REPLY_ENABLED=true
+      - CHROME_VERSION=142
+      - DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver
       
       # ==================================================
       # 通知配置 (可选)
@@ -171,9 +171,37 @@ docker-compose logs -f
 | `REPLY_ENABLED`         | 否       | 是否开启 AI 回帖功能。`true` 或 `false`。                                                                   | `true`                                             |
 | `TG_BOT_TOKEN`          | 否       | Telegram Bot 的 Token，用于发送通知。                                                                       | `"123456:ABC-DEF123456..."`                        |
 | `TG_USER_ID`            | 否       | 您的 Telegram User ID，用于接收通知。                                                                       | `"123456789"`                                      |
-| `CHROME_VERSION`        | **是**   | **请勿修改！** 这是为 Docker 环境固定的 Chrome 版本号，用于避免网络错误。                                   | `"124"`                                            |
+| `CHROME_VERSION`        | **是**   | **请勿修改！** 这是为 Docker 环境固定的 Chrome 版本号，用于避免网络错误。                                   | `"142"`                                            |
 
 ---
+
+## ⚙️ 详细配置说明
+
+除了环境变量，您还可以通过 `config/forum_config.json` 进行更细致的配置（Docker 映射到 `/app/config/forum_config.json`）：
+
+| 配置项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| **scheduler.start_time** | 每日任务启动时间 (HH:MM) | "09:00" |
+| **scheduler.runs_per_day** | 每天唤醒检查次数 | 20 |
+| **reply.max_replies_per_day** | 每天最大回复帖子数 | 20 |
+| **reply.max_length** | AI 回复最大字数 | 10 |
+| **reply.reply_probability** | 回复概率 (0-1) | 0.8 |
+| **filter.excluded_keywords** | 标题/内容含此关键词则跳过 | ["广告", "推广", "加群"] |
+| **ai.provider** | AI 提供商标识 | "new-api" |
+
+### 通知服务
+
+本项目集成 `notify.py`，支持极其丰富的推送渠道。只需在环境变量中设置对应的 Key 即可启用。
+常用变量示例：
+*   **Telegram**: `TG_BOT_TOKEN`, `TG_USER_ID`
+*   **PushPlus**: `PUSH_PLUS_TOKEN`
+*   **Server酱**: `PUSH_KEY`
+*   **钉钉**: `DD_BOT_TOKEN`, `DD_BOT_SECRET`
+*   **企业微信**: `QYWX_KEY` (机器人)
+
+*(更多支持请参考源码中的 `notify.py`)*
+
+
 
 ## 📈 日志与维护
 
