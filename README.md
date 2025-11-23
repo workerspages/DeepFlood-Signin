@@ -223,7 +223,7 @@ docker-compose logs -f
 
 1.  **启动时报错 `SSLZeroReturnError` 或 `TLS/SSL connection has been closed`?**
     *   **原因**: `CHROME_VERSION` 环境变量丢失或为空。
-    *   **解决**: 确保您的 `docker-compose.yml` 中包含 `- CHROME_VERSION="124"` 这一行。
+    *   **解决**: 确保您的 `docker-compose.yml` 中包含 `- CHROME_VERSION="142"` 这一行。
 
 2.  **日志显示“无法获取帖子”或 Cookie 失效？**
     *   **原因**: 您的初始 `FORUM_SESSION_COOKIE` 不完整或已过期。
