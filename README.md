@@ -63,60 +63,134 @@ touch config/forum_config.json
 这是您**唯一**需要修改的文件。请用您喜欢的编辑器打开 `docker-compose.yml`，并根据其中的注释修改配置。
 
 ```yaml
+version: '3.8'
+
 services:
   deepflood-signin:
-    # 使用 ghcr.io 上预构建的官方镜像
     image: ghcr.io/workerspages/deepflood-signin:latest
     container_name: deepflood-signin
+    restart: always
+    volumes:
+      # 数据目录 (数据库文件)
+      - ./data:/app/data
+      # 配置目录 (用于保存 cookie.json 和 forum_config.json)
+      - ./config:/app/config
+      # 日志目录
+      - ./logs:/app/logs
+
     environment:
       # ==================================================
-      # 核心配置 (请务必修改)
+      # 1. API 配置 (API Settings)
+      # 对应 config.json 中的 "api" 部分
       # ==================================================
-      
-      # 论坛配置
-      - FORUM_SESSION_COOKIE=your_session_cookie_here
-      - FORUM_BASE_URL=https://www.deepflood.com
-      
-      # AI 配置
-      - AI_API_KEY=your_ai_api_key_here
-      - AI_BASE_URL=your_ai_base_url_here
-      - AI_MODEL=your_ai_model_here
-      
-      # ==================================================
-      # 调度器与功能开关
-      # ==================================================
-      
-      # 任务开始时间 (HH:MM 格式)
-      - SCHEDULER_START_TIME=09:00
-      # 全局回复开关 (true 或 false)
-      - REPLY_ENABLED=true
-      
-      # ==================================================
-      # 通知服务配置 (可选)
-      # ==================================================
-      
-      # Telegram 机器人 Token
-      - TG_BOT_TOKEN=
-      # Telegram 用户的 User ID
-      - TG_USER_ID=
-      
-      # ==================================================
-      # 环境配置 (一般无需修改)
-      # ==================================================
-      
-      # 标记在 Docker 容器中运行
-      - IN_DOKCER=true
-      # 为本地运行环境指定Chrome主版本号，在Docker中请留空
-      - CHROME_VERSION=
-      
-    volumes:
-      # 将 data 目录挂载到主机，用于持久化数据库
-      - ./data:/app/data
-      # 将 config 目录挂载到主机，方便修改配置
-      - ./config:/app/config
-      
-    restart: always
+      - FORUM_BASE_URL=https://www.deepflood.com          # 论坛基础地址
+      - FORUM_SESSION_COOKIE=your_session_cookie_here     # 论坛 Session Cookie
+      - FORUM_USER_AGENT=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 # 浏览器 User-Agent
+      - FORUM_REQUEST_TIMEOUT=30                          # 请求超时时间(秒)
+      - FORUM_MAX_RETRIES=3                               # 最大重试次数
+      - FORUM_RATE_LIMIT_PER_MINUTE=20                    # 每分钟请求限制次数
+      - FORUM_ENABLE_PROXY=false                          # 是否启用代理
+      - FORUM_PROXY_URL=                                  # 代理地址
 
+      # ==================================================
+      # 2. AI 配置 (AI Settings)
+      # 对应 config.json 中的 "ai" 部分
+      # ==================================================
+      - AI_PROVIDER=new-api                               # AI 服务提供商
+      - AI_MODEL=gpt-3.5-turbo                            # AI 模型名称
+      - AI_API_KEY=your_ai_api_key_here                   # AI API 密钥
+      - AI_BASE_URL=https://api.openai.com/v1             # AI 接口地址
+      - AI_MAX_TOKENS=30                                  # 生成最大 Token 数
+      - AI_TEMPERATURE=0.8                                # 温度/随机性 (0-1)
+
+      # ==================================================
+      # 3. 回复配置 (Reply Settings)
+      # 对应 config.json 中的 "reply" 部分
+      # ==================================================
+      - REPLY_ENABLED=true                                # 是否开启自动回复
+      - REPLY_PROBABILITY=0.8                             # 回复概率 (0-1)
+      - REPLY_MIN_DELAY_SECONDS=60                        # 最小回复延迟(秒)
+      - REPLY_MAX_DELAY_SECONDS=300                       # 最大回复延迟(秒)
+      - REPLY_MAX_REPLIES_PER_HOUR=10                     # 每小时最大回复数
+      - REPLY_MAX_REPLIES_PER_DAY=20                      # 每天最大回复数
+      - REPLY_MAX_LENGTH=10                               # 最大回复字数
+      - REPLY_MIN_LENGTH=1                                # 最小回复字数
+      - REPLY_ENABLE_EMOJI=true                           # 是否启用 Emoji
+      - REPLY_TEMPLATE_FALLBACK=true                      # AI 失败是否回退到模板
+
+      # ==================================================
+      # 4. 过滤配置 (Filter Settings)
+      # 对应 config.json 中的 "filter" 部分
+      # 注意：列表类型的变量(如关键词)通常需要代码支持逗号分隔解析
+      # ==================================================
+      - FILTER_MIN_POST_AGE_MINUTES=5                     # 帖子最小发布时间(分钟)
+      - FILTER_MAX_POST_AGE_HOURS=24                      # 帖子最大发布时间(小时)
+      # 逗号分隔的关键词列表
+      - FILTER_EXCLUDED_KEYWORDS=广告,推广,加群,微信,代刷   # 排除关键词
+      - FILTER_REQUIRED_KEYWORDS=                         # 必须包含关键词
+      - FILTER_MIN_CONTENT_LENGTH=10                      # 帖子最小内容长度
+      - FILTER_MAX_CONTENT_LENGTH=5000                    # 帖子最大内容长度
+      - FILTER_EXCLUDED_CATEGORIES=广告,灌水                # 排除分类/板块
+
+      # ==================================================
+      # 5. 数据库配置 (Database Settings)
+      # 对应 config.json 中的 "database" 部分
+      # ==================================================
+      - DATABASE_PATH=data/forum_reply.db                 # 数据库文件路径
+      - DATABASE_BACKUP_ENABLED=true                      # 是否开启数据库备份
+      - DATABASE_BACKUP_INTERVAL_HOURS=24                 # 备份间隔(小时)
+
+      # ==================================================
+      # 6. 日志配置 (Logging Settings)
+      # 对应 config.json 中的 "logging" 部分
+      # ==================================================
+      - LOGGING_LEVEL=INFO                                # 日志等级
+      - LOGGING_FILE_PATH=logs/forum_reply.log            # 日志文件路径
+      - LOGGING_MAX_FILE_SIZE=10MB                        # 单个日志文件最大大小
+      - LOGGING_BACKUP_COUNT=5                            # 保留日志文件数量
+
+      # ==================================================
+      # 7. 调度器配置 (Scheduler Settings)
+      # 对应 config.json 中的 "scheduler" 部分
+      # ==================================================
+      - SCHEDULER_RUN_MODE=schedule                       # 运行模式
+      - SCHEDULER_START_TIME=09:00                        # 每日开始运行时间
+      - SCHEDULER_RUNS_PER_DAY=20                         # 每天运行次数
+      - SCHEDULER_TIME_BETWEEN_RUNS_MIN=30                # 运行间隔最小时间(分)
+      - SCHEDULER_TIME_BETWEEN_RUNS_MAX=60                # 运行间隔最大时间(分)
+      - SCHEDULER_MIN_POST_INTERVAL_SECONDS=10            # 发帖最小间隔(秒)
+      - SCHEDULER_MAX_POST_INTERVAL_SECONDS=30            # 发帖最大间隔(秒)
+
+      # ==================================================
+      # 8. 签到配置 (Signin Settings)
+      # 对应 config.json 中的 "signin" 部分
+      # ==================================================
+      - SIGNIN_ENABLED=true                               # 是否开启自动签到
+      - SIGNIN_RANDOM_BONUS=false                         # 是否领取随机奖励
+      - SIGNIN_HEADLESS=true                              # 是否启用无头模式(不显示浏览器)
+
+      # ==================================================
+      # 9. 环境与浏览器配置 (Environment)
+      # ==================================================
+      - IN_DOCKER=true                                    # 是否在 Docker 中运行
+      - DRIVER_EXECUTABLE_PATH=/usr/bin/chromedriver      # ChromeDriver 可执行路径
+      # 可选：强制指定 Chrome 版本 (防止自动下载驱动版本不匹配)
+      - CHROME_VERSION=142                                # 指定 Chrome 版本
+
+      # ==================================================
+      # 10. 通知服务配置 (Notification)
+      # 支持 notify.py 中的所有变量，以下为常用示例
+      # ==================================================
+      # Telegram
+      - TG_BOT_TOKEN=                                     # Telegram 机器人 Token
+      - TG_USER_ID=                                       # Telegram 用户/群组 ID
+      # PushPlus
+      - PUSH_PLUS_TOKEN=                                  # PushPlus 推送 Token
+      # 企业微信
+      - QYWX_KEY=                                         # 企业微信 WebHook Key
+      # 钉钉
+      - DD_BOT_TOKEN=                                     # 钉钉机器人 Access Token
+      - DD_BOT_SECRET=                                    # 钉钉机器人加签 Secret
 ```
 
 #### 4. 构建并启动容器
