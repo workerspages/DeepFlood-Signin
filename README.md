@@ -1,216 +1,249 @@
+# DeepFlood-Signin - 论坛自动签到与 AI 回帖机器人
 
-# 🌊 DeepFlood Auto Sign-in & AI Reply Bot
+![GitHub License](https://img.shields.io/github/license/workerspages/DeepFlood-Signin)
+![Docker Pulls](https://img.shields.io/docker/pulls/workerspages/deepflood-signin)
+![GitHub Stars](https://img.shields.io/github/stars/workerspages/DeepFlood-Signin?style=social)
 
-[![Docker Image](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker)](https://github.com/workerspages/deepflood-signin/pkgs/container/deepflood-signin)
-[![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+一款专为 [DeepFlood 论坛](https://www.deepflood.com) 设计的自动化工具，集成了 **每日自动签到** 和 **AI 智能回帖** 两大核心功能。项目通过模拟真实浏览器行为，确保稳定运行，并利用 AI 模型分析帖子内容，生成简短、自然、人性化的回复。
 
-**DeepFlood 论坛自动签到与 AI 智能回复助手**
+整个项目被封装在 Docker 中，实现了“一次配置，永久运行”的终极目标。
 
-这是一个基于 Python、Selenium 和 AI 大模型（OpenAI/New-API）开发的自动化工具，专为 DeepFlood 论坛设计。它不仅能帮助你每日自动签到领取奖励，还能通过 RSS 监控新帖，利用 AI 理解帖子内容并生成简短、自然、高质量的回复，从而保持账号活跃度。
+## ✨ 核心功能
 
----
-
-## ✨ 核心特性
-
-*   **✅ 全自动签到**
-    *   每日定时自动访问论坛，点击签到并领取“试试手气”奖励。
-    *   支持无头模式（Headless）运行，无需图形界面。
-
-*   **🤖 上下文感知 AI 回复**
-    *   **智能分析**：通过 RSS 获取新帖，利用 NLP 技术分析帖子情感（求助、讨论、分享）和内容。
-    *   **拟人化生成**：集成 OpenAI 格式接口，生成 1-10 字的简短回复（如：“技术贴，收藏了 👍”、“试试看，加油”），拒绝机械式长篇灌水。
-    *   **质量风控**：内置关键词过滤和重复检测，确保回复内容安全且不重复。
-
-*   **🛡️ 强力浏览器仿真**
-    *   使用 `undetected-chromedriver` 绕过 Cloudflare 等反爬虫检测。
-    *   **Cookie 持久化**：自动保存和刷新浏览器 Cookie，避免频繁失效。
-    *   **环境自适应**：自动适配 Docker 环境下的 Chrome 版本。
-
-*   **⚙️ 极度灵活的配置 (New!)**
-    *   **全环境变量支持**：所有配置项均可直接在 `docker-compose.yml` 中定义，无需修改代码或 JSON 文件。
-    *   **多级配置优先级**：自动处理 Cookie 文件 > 环境变量 > 默认配置的优先级逻辑。
-
-*   **📢 多渠道通知**
-    *   任务完成后发送详细报告（签到结果、回复内容、统计数据）。
-    *   支持 Telegram、微信（PushPlus/企业微信/微加）、钉钉、飞书、Bark 等 20+ 种推送方式。
+*   **🏆 自动每日签到**: 每日定时启动，模拟真人操作，完成签到任务，不错过任何奖励。
+*   **🧠 AI 智能回帖**:
+    *   实时从 RSS 源获取最新帖子。
+    *   调用 AI 模型（兼容 OpenAI, new-api, one-api, 智谱等）分析帖子内容。
+    *   自动生成**简短（1-10字）、自然、高质量**的回复。
+    *   内置模板库，在 AI 失效时自动降级，确保回复不中断。
+*   **🛡️ 强大的反-反爬虫能力**:
+    *   使用 `undetected-chromedriver` 模拟真实浏览器环境，有效对抗 Cloudflare 的 WAF 防火墙和人机验证。
+    *   所有关键操作（签到、获取帖子、回帖）均在完整的浏览器环境中执行，成功率极高。
+*   **🔑 Cookie 自动续期与持久化 (Set it and Forget it!)**:
+    *   **告别手动更换 Cookie**！首次配置成功后，程序会在每次运行时自动从浏览器获取最新的 `cf_clearance` 和 `session` 令牌。
+    *   最新的 Cookie 会被自动加密保存在 `./config/cookie.json` 文件中，并被优先加载。
+    *   实现了真正的“一次配置，永久有效”，只要您不主动登出或修改密码。
+*   **🚀 Docker 一键部署**: 提供 `docker-compose.yml`，只需修改少量配置即可一键启动，无需关心复杂的环境依赖。
+*   **🔔 丰富的任务通知**: 支持通过 **Telegram**、企业微信、钉钉等多种渠道发送每日任务报告，让你对运行状态了如指掌。
 
 ---
 
-## 🚀 快速部署 (Docker Compose) - 推荐
+## 🚀 快速开始 (Docker 部署)
 
-这是最简单、最稳定的运行方式，无需配置复杂的 Python 环境。
+推荐使用 Docker Compose 进行部署，这是最简单、最稳定的方式。
 
-### 1. 创建项目目录
-在你的服务器上创建一个文件夹：
+### 准备工作
+
+*   一台安装了 `Git` 的服务器或电脑。
+*   已安装 `Docker` 和 `Docker Compose`。
+
+### 部署步骤
+
+#### 1. 克隆项目
+
 ```bash
-mkdir deepflood-signin && cd deepflood-signin
+git clone https://github.com/workerspages/DeepFlood-Signin.git
+cd DeepFlood-Signin
 ```
 
-### 2. 创建配置文件
-新建 `docker-compose.yml` 文件，并复制以下内容。
-**请务必修改 `FORUM_SESSION_COOKIE` 和 `AI_API_KEY`。**
+#### 2. 创建必要的目录和文件
+
+这是**非常重要**的一步，可以防止因目录不存在而导致的启动失败。
+
+```bash
+# 创建用于持久化数据的目录
+mkdir -p data config
+
+# 创建一个空的配置文件，程序需要它存在
+touch config/forum_config.json
+```
+
+#### 3. 配置 `docker-compose.yml`
+
+这是您**唯一**需要修改的文件。请用您喜欢的编辑器打开 `docker-compose.yml`，并根据其中的注释修改配置。
 
 ```yaml
-version: '3.8'
-
 services:
   deepflood-signin:
+    # 使用 ghcr.io 上预构建的官方镜像
     image: ghcr.io/workerspages/deepflood-signin:latest
     container_name: deepflood-signin
-    restart: always
-    volumes:
-      - ./data:/app/data      # 数据库持久化
-      - ./config:/app/config  # Cookie 持久化
-      - ./logs:/app/logs      # 日志文件
     environment:
-      # --- 🔑 核心凭证 (必填) ---
-      - FORUM_SESSION_COOKIE=你的Cookie字符串
-      - AI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
-
-      # --- 🌐 论坛配置 ---
+      # ==================================================
+      # 核心配置 (请务必修改)
+      # ==================================================
+      
+      # 论坛配置
+      - FORUM_SESSION_COOKIE=your_session_cookie_here
       - FORUM_BASE_URL=https://www.deepflood.com
       
-      # --- 🧠 AI 配置 ---
-      - AI_BASE_URL=https://api.openai.com/v1  # 或第三方转发地址
-      - AI_MODEL=gpt-3.5-turbo
-
-      # --- ⏰ 调度配置 ---
-      - SCHEDULER_START_TIME=09:00  # 每天运行时间 (24小时制)
-      - REPLY_ENABLED=true          # 开启自动回复
-
-      # --- 💬 通知配置 (选填) ---
-      # Telegram 示例
+      # AI 配置
+      - AI_API_KEY=your_ai_api_key_here
+      - AI_BASE_URL=your_ai_base_url_here
+      - AI_MODEL=your_ai_model_here
+      
+      # ==================================================
+      # 调度器与功能开关
+      # ==================================================
+      
+      # 任务开始时间 (HH:MM 格式)
+      - SCHEDULER_START_TIME=09:00
+      # 全局回复开关 (true 或 false)
+      - REPLY_ENABLED=true
+      
+      # ==================================================
+      # 通知服务配置 (可选)
+      # ==================================================
+      
+      # Telegram 机器人 Token
       - TG_BOT_TOKEN=
+      # Telegram 用户的 User ID
       - TG_USER_ID=
-      # PushPlus 示例
-      - PUSH_PLUS_TOKEN=
+      
+      # ==================================================
+      # 环境配置 (一般无需修改)
+      # ==================================================
+      
+      # 标记在 Docker 容器中运行
+      - IN_DOKCER=true
+      # 为本地运行环境指定Chrome主版本号，在Docker中请留空
+      - CHROME_VERSION=
+      
+    volumes:
+      # 将 data 目录挂载到主机，用于持久化数据库
+      - ./data:/app/data
+      # 将 config 目录挂载到主机，方便修改配置
+      - ./config:/app/config
+      
+    restart: always
 
-      # --- 🔧 高级配置 (可选) ---
-      - IN_DOCKER=true
-      # 强制指定Chrome版本，防止自动下载驱动不匹配
-      - CHROME_VERSION=142 
 ```
 
-### 3. 启动服务
+#### 4. 构建并启动容器
+
+在 `docker-compose.yml` 文件所在的目录，运行以下命令：
+
 ```bash
-docker-compose up -d
+# --build 参数会强制使用最新的代码构建镜像
+# --force-recreate 确保旧的容器被替换
+docker-compose up -d --build --force-recreate
 ```
 
-### 4. 查看日志
+#### 5. 检查运行日志
+
+等待一两分钟，然后运行以下命令查看日志，确保一切正常：
+
 ```bash
 docker-compose logs -f
 ```
-如果看到 `已将最新Cookie保存到 config/cookie.json` 和 `点击签到图标成功`，说明部署成功！
+
+如果您看到“**每日签到成功完成，并已刷新Cookie**”和“**已将最新Cookie保存到 config/cookie.json**”等日志，那么恭喜您，部署成功！
 
 ---
 
-## 🍪 如何获取 Cookie (新手必读)
+## 🔧 配置指南
 
-Cookie 是机器人登录论坛的唯一凭证，获取错误的 Cookie 会导致任务失败。
+### 如何获取完整的 Cookie
 
-1.  在电脑浏览器（建议 Chrome 无痕模式）打开 [DeepFlood 论坛](https://www.deepflood.com)。
-2.  **登录账号**。
-3.  按下 `F12` 打开开发者工具，切换到 **Network (网络)** 标签页。
-4.  刷新页面 (`F5`)。
-5.  在请求列表中点击第一个请求（通常是 `www.deepflood.com` 或 `home`）。
-6.  在右侧 **Request Headers (请求头)** 中找到 `Cookie`。
-7.  复制 `Cookie:` 冒号后面的**所有内容**，填入 `FORUM_SESSION_COOKIE`。
+这是**首次配置最关键**的一步。由于网站有 Cloudflare 保护，我们必须获取包含 `cf_clearance` 令牌的完整 Cookie。
 
-> **⚠️ 重要提示**：如果需要更换账号或更新失效的 Cookie，请务必先执行 `rm config/cookie.json` 删除旧的缓存文件，然后重启容器。
+1.  在您的电脑浏览器上，打开 DeepFlood 论坛并**登录**。
+2.  按 `F12` 键打开“开发者工具”，切换到 **“网络” (Network)** 选项卡。
+3.  刷新一下页面。
+4.  在网络请求列表中，找到任意一个向 `www.deepflood.com` 发出的请求，点击它。
+5.  在右侧出现的窗口中，找到 **“标头” (Headers)** -> **“请求标头” (Request Headers)**。
+6.  向下滚动，找到名为 `cookie` 的一行。
+7.  **右键点击 `cookie` 这一整行的值**，选择 **“复制值” (Copy value)**。
+8.  将复制的**完整字符串**粘贴到 `docker-compose.yml` 的 `FORUM_SESSION_COOKIE` 字段中。
 
----
+### 环境变量详解
 
-## 📖 详细配置指南
-
-得益于最新的配置管理器，你可以通过环境变量控制几乎所有行为。
-
-### 基础设置
-| 变量名 | 说明 | 默认值 |
-| :--- | :--- | :--- |
-| `FORUM_SESSION_COOKIE` | 论坛登录凭证 | (无) |
-| `AI_API_KEY` | AI 接口密钥 | (无) |
-| `AI_BASE_URL` | AI 接口地址 | `http://localhost:3000/v1` |
-| `AI_MODEL` | 使用的模型 | `gpt-3.5-turbo` |
-
-### 行为控制
-| 变量名 | 说明 | 默认值 |
-| :--- | :--- | :--- |
-| `SCHEDULER_START_TIME` | 每日任务启动时间 | `09:00` |
-| `REPLY_ENABLED` | 是否开启自动回复 | `true` |
-| `REPLY_MAX_REPLIES_PER_DAY` | 每日最大回复数 | `20` |
-| `REPLY_MAX_LENGTH` | 回复最大字数 | `10` |
-| `SIGNIN_ENABLED` | 是否开启签到 | `true` |
-
-### 过滤与风控
-| 变量名 | 说明 | 默认值 |
-| :--- | :--- | :--- |
-| `FILTER_EXCLUDED_KEYWORDS` | 标题含此类词则跳过(逗号分隔) | `广告,推广,加群` |
-| `FILTER_EXCLUDED_CATEGORIES` | 板块黑名单 | `广告,灌水` |
-
-*(更多变量请参考 `config_manager.py` 源码)*
+| 变量名                  | 是否必须 | 描述                                                                                                        | 示例                                               |
+| ----------------------- | -------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `FORUM_SESSION_COOKIE`  | **是**   | 首次运行时使用的完整 Cookie 字符串。                                                                        | `"cf_clearance=...; session=...; ..."`             |
+| `AI_API_KEY`            | **是**   | 您的 AI 服务 API Key。                                                                                      | `"sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx"`                |
+| `AI_BASE_URL`           | **是**   | 您的 AI 服务 API 地址。                                                                                     | `"https://api.openai.com/v1"`                      |
+| `AI_MODEL`              | **是**   | 您要使用的 AI 模型名称。                                                                                    | `"gpt-3.5-turbo"`                                  |
+| `SCHEDULER_START_TIME`  | 否       | 每日任务的启动时间，使用 24 小时制 `HH:MM` 格式。                                                           | `"09:30"`                                          |
+| `REPLY_ENABLED`         | 否       | 是否开启 AI 回帖功能。`true` 或 `false`。                                                                   | `true`                                             |
+| `TG_BOT_TOKEN`          | 否       | Telegram Bot 的 Token，用于发送通知。                                                                       | `"123456:ABC-DEF123456..."`                        |
+| `TG_USER_ID`            | 否       | 您的 Telegram User ID，用于接收通知。                                                                       | `"123456789"`                                      |
+| `CHROME_VERSION`        | **是**   | **请勿修改！** 这是为 Docker 环境固定的 Chrome 版本号，用于避免网络错误。                                   | `"142"`                                            |
 
 ---
 
-## 🛠️ 本地开发
+## ⚙️ 详细配置说明
 
-如果你想修改代码或在本地 Python 环境运行：
+除了环境变量，您还可以通过 `config/forum_config.json` 进行更细致的配置（Docker 映射到 `/app/config/forum_config.json`）：
 
-1.  **克隆仓库**
+| 配置项 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| **scheduler.start_time** | 每日任务启动时间 (HH:MM) | "09:00" |
+| **scheduler.runs_per_day** | 每天唤醒检查次数 | 20 |
+| **reply.max_replies_per_day** | 每天最大回复帖子数 | 20 |
+| **reply.max_length** | AI 回复最大字数 | 10 |
+| **reply.reply_probability** | 回复概率 (0-1) | 0.8 |
+| **filter.excluded_keywords** | 标题/内容含此关键词则跳过 | ["广告", "推广", "加群"] |
+| **ai.provider** | AI 提供商标识 | "new-api" |
+
+### 通知服务
+
+本项目集成 `notify.py`，支持极其丰富的推送渠道。只需在环境变量中设置对应的 Key 即可启用。
+常用变量示例：
+*   **Telegram**: `TG_BOT_TOKEN`, `TG_USER_ID`
+*   **PushPlus**: `PUSH_PLUS_TOKEN`
+*   **Server酱**: `PUSH_KEY`
+*   **钉钉**: `DD_BOT_TOKEN`, `DD_BOT_SECRET`
+*   **企业微信**: `QYWX_KEY` (机器人)
+
+*(更多支持请参考源码中的 `notify.py`)*
+
+
+
+## 📈 日志与维护
+
+*   **实时查看日志**:
     ```bash
-    git clone https://github.com/workerspages/deepflood-signin.git
-    cd deepflood-signin
+    docker-compose logs -f
+    ```
+*   **停止服务**:
+    ```bash
+    docker-compose down
+    ```
+*   **更新项目**:
+    ```bash
+    # 1. 拉取最新的代码
+    git pull
+    
+    # 2. 重新构建并启动
+    docker-compose up -d --build --force-recreate
     ```
 
-2.  **安装依赖**
-    ```bash
-    pip install -r requirements.txt
-    ```
+## ❓ 常见问题 (FAQ)
 
-3.  **运行**
-    *   **单次测试模式**（立即执行一次）：
-        ```bash
-        python forum_reply_main.py --mode once
-        ```
-    *   **计划任务模式**（挂机等待）：
-        ```bash
-        python forum_reply_main.py --mode schedule
-        ```
+1.  **启动时报错 `SSLZeroReturnError` 或 `TLS/SSL connection has been closed`?**
+    *   **原因**: `CHROME_VERSION` 环境变量丢失或为空。
+    *   **解决**: 确保您的 `docker-compose.yml` 中包含 `- CHROME_VERSION="142"` 这一行。
 
----
+2.  **日志显示“无法获取帖子”或 Cookie 失效？**
+    *   **原因**: 您的初始 `FORUM_SESSION_COOKIE` 不完整或已过期。
+    *   **解决**: 严格按照【如何获取完整的 Cookie】部分的教程，从**网络 (Network)** 面板重新复制最新的、完整的 Cookie 字符串，然后更新 `docker-compose.yml` 并重启服务。
 
-## 📁 项目结构
+3.  **启动时报错 `config/forum_config.json: no such file or directory`?**
+    *   **原因**: 您在启动前没有创建必要的目录和文件。
+    *   **解决**: 运行 `mkdir -p config data` 和 `touch config/forum_config.json` 来创建它们。
 
-```text
-.
-├── config/                 # 配置文件挂载点
-├── data/                   # SQLite 数据库 (记录已处理帖子)
-├── logs/                   # 运行日志
-├── forum_reply/            # 核心源码
-│   ├── ai/                 # AI 内容分析与回复生成
-│   ├── api/                # 论坛 API 封装与浏览器控制
-│   ├── config/             # 配置管理器
-│   ├── database/           # 数据库操作
-│   └── scheduler/          # 任务调度与签到逻辑
-├── Dockerfile              # 镜像构建文件
-├── docker-compose.yml      # 容器编排文件
-└── notify.py               # 推送通知模块
-```
+## 🤝 贡献
 
----
+欢迎提交 Pull Requests 或 Issues 来帮助改进这个项目。
 
-## ⚠️ 免责声明
+## 📄 许可证
 
-1.  本项目仅供 Python 编程学习和技术研究使用。
-2.  请勿将本项目用于发布垃圾信息、广告或进行恶意刷屏。
-3.  使用本项目所产生的任何后果（包括但不限于账号被封禁）由使用者自行承担。
-4.  请合理设置回复频率（建议每日不超过 20 条），维护良好的社区环境。
+本项目使用 [MIT License](LICENSE)。
 
----
+## 🧑‍💻 作者
 
-## 🤝 贡献与支持
+*   **原始项目**: [zpaeng/DeepFlood-Signin](https://github.com/zpaeng/DeepFlood-Signin)
+*   **功能增强与调试**: 由 AI 助手与您共同完成
 
-欢迎提交 Issue 反馈 Bug 或提交 Pull Request 改进代码。
-如果是 Docker 运行问题，请先检查 Logs：`docker-compose logs -f --tail 100`。
-
-**License**: MIT
+希望这份文档能帮助您顺利使用！
